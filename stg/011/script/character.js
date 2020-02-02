@@ -29,11 +29,44 @@ class Character{
         
         this.ready = false;
 
+        // 初期状態、上向き
+        this.angle = 270 * Math.PI / 180;
+
         this.image = new Image();
         this.image.addEventListener('load', () => {
             this.ready = true;
         }, false);
         this.image.src = imagePath;
+    }
+
+    setVectorFromAngle(angle){
+        this.angle = angle;
+
+        let sin = Math.sin(angle);
+        let cos = Math.cos(angle);
+
+        this.vector.set(cos, sin);
+    }
+
+    rotationDraw(){
+        this.ctx.save();
+
+        this.ctx.translate(this.position.x, this.position.y);
+
+        this.ctx.rotate(this.angle - Math.PI * 1.5);
+
+        let offsetX = this.width / 2;
+        let offsetY = this.height / 2;
+
+        this.ctx.drawImage(
+            this.image,
+            -offsetX,
+            -offsetY,
+            this.width,
+            this.height
+        );
+
+        this.ctx.restore();
     }
 
     draw(){
@@ -70,6 +103,8 @@ class Viper extends Character{
         this.comingEndPosition = null;
 
         this.shotArray = null;
+
+        this.singleShotArray = null;
     }
 
     /**
@@ -87,8 +122,9 @@ class Viper extends Character{
         this.comingEndPosition = new Position(endX, endY);
     }
 
-    setShotArray(shotArray){
+    setShotArray(shotArray, singleShotArray){
         this.shotArray = shotArray;
+        this.singleShotArray = singleShotArray;
     }
 
     update(){
@@ -133,9 +169,24 @@ class Viper extends Character{
 
             if(window.isKeyDown.key_z === true){
                 if(this.shotCheckCounter >= 0){
-                    for(let i = 0; i < this.shotArray.length; ++i){
+                    let i;
+                    for(i = 0; i < this.shotArray.length; ++i){
                         if(this.shotArray[i].life <= 0){
                             this.shotArray[i].set(this.position.x, this.position.y);
+                            this.shotCheckCounter = -this.shotInterval;
+                            break;
+                        }
+                    }
+
+                    for(i = 0; i < this.singleShotArray.length; i += 2){
+                        if(this.singleShotArray[i].life <= 0 && this.singleShotArray[i + 1].life <= 0){
+                            let radCW = 280 * Math.PI / 180;
+                            let radCCW = 260 * Math.PI / 180;
+                            
+                            this.singleShotArray[i].set(this.position.x, this.position.y);
+                            this.singleShotArray[i].setVectorFromAngle(radCW);
+                            this.singleShotArray[i + 1].set(this.position.x, this.position.y);
+                            this.singleShotArray[i + 1].setVectorFromAngle(radCCW);
                             this.shotCheckCounter = -this.shotInterval;
                             break;
                         }
@@ -156,6 +207,8 @@ class Shot extends Character {
         super(ctx, x, y, w, h, 0, imagePath);
 
         this.speed = 7;
+
+        this.vector = new Position(0.0, -1.0);
     }
 
     set(x, y){
@@ -163,6 +216,10 @@ class Shot extends Character {
 
         // ショットが出ている状態
         this.life = 1;
+    }
+
+    setVector(x, y){
+        this.vector.set(x, y);
     }
 
     update(){
@@ -174,8 +231,11 @@ class Shot extends Character {
             this.life = 0;
         }
 
-        this.position.y -= this.speed;
+        this.position.x += this.vector.x * this.speed;
+        this.position.y += this.vector.y * this.speed;
 
         this.draw();
+
+        this.rotationDraw();
     }
 }
